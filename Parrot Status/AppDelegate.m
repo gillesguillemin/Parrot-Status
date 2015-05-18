@@ -22,6 +22,26 @@ typedef NS_ENUM(NSInteger, PSState) {
 @property(weak) IBOutlet NSWindow *advancedBatteryWindow;
 @property(weak) IBOutlet SUUpdater *updater;
 @property id eventMonitor;
+
+@property(nonatomic, strong) NSStatusItem *statusItem;
+@property(nonatomic) BluetoothRFCOMMChannelID channelId;
+@property(nonatomic, strong) IOBluetoothRFCOMMChannel *mRfCommChannel;
+@property(nonatomic) PSState state;
+
+// State
+@property(nonatomic) int batteryLevel;
+@property(nonatomic) BOOL batteryCharging;
+@property(nonatomic, copy) NSString *version;
+@property(nonatomic, copy) NSString *name;
+@property(nonatomic) BOOL autoConnection;
+@property(nonatomic) BOOL ancPhoneMode;
+@property(nonatomic) BOOL noiseCancel;
+@property(nonatomic) BOOL equalizer;
+@property(nonatomic) BOOL louReedMode;
+@property(nonatomic) BOOL concertHall;
+@property(nonatomic) CFAbsoluteTime showUntilDate;
+
+@property(nonatomic) CFMachPortRef eventTap;
 @end
 
 @interface AppDelegate (SharedFileListExample)
@@ -32,27 +52,7 @@ typedef NS_ENUM(NSInteger, PSState) {
 - (BOOL)loginItemExistsWithLoginItemReference:(LSSharedFileListRef)theLoginItemsRefs forPath:(NSString *)appPath;
 @end
 
-@implementation AppDelegate {
-    NSStatusItem *statusItem;
-    BluetoothRFCOMMChannelID channelId;
-    IOBluetoothRFCOMMChannel *mRfCommChannel;
-    PSState state;
-
-    // State
-    int batteryLevel;
-    BOOL batteryCharging;
-    NSString *version;
-    NSString *name;
-    BOOL autoConnection;
-    BOOL ancPhoneMode;
-    BOOL noiseCancel;
-    BOOL equalizer;
-    BOOL louReedMode;
-    BOOL concertHall;
-    CFAbsoluteTime showUntilDate;
-
-    CFMachPortRef eventTap;
-}
+@implementation AppDelegate
 
 + (void)initialize {
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{
@@ -126,10 +126,10 @@ typedef NS_ENUM(NSInteger, PSState) {
 }
 
 - (BOOL)applicationShouldOpenUntitledFile:(NSApplication *)sender {
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"HiddenWhenDisconnected"] && state != PSAskingStateConnected) {
-        showUntilDate = CFAbsoluteTimeGetCurrent() + 30.;
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"HiddenWhenDisconnected"] && self.state != PSAskingStateConnected) {
+        self.showUntilDate = CFAbsoluteTimeGetCurrent() + 30.;
         [self updateStatusItem];
-        [statusItem popUpStatusItemMenu:statusItem.menu];
+        [self.statusItem popUpStatusItemMenu:self.statusItem.menu];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) (31 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [self updateStatusItem];
         });
@@ -143,14 +143,14 @@ typedef NS_ENUM(NSInteger, PSState) {
 }
 
 - (void)setupStatusItem {
-    statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
+    self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSSquareStatusItemLength];
     [self updateStatusItem];
-    statusItem.highlightMode = YES;
+    self.statusItem.highlightMode = YES;
     NSMenu *myMenu = [[NSMenu alloc] initWithTitle:@"Test"];
     myMenu.delegate = self;
-    statusItem.menu = myMenu;
-    if ([statusItem respondsToSelector:@selector(button)]) {
-        statusItem.button.appearsDisabled = YES;
+    self.statusItem.menu = myMenu;
+    if ([self.statusItem respondsToSelector:@selector(button)]) {
+        self.statusItem.button.appearsDisabled = YES;
     }
 }
 
@@ -167,20 +167,20 @@ typedef NS_ENUM(NSInteger, PSState) {
 
 - (void)updateStatusItem {
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"HiddenWhenDisconnected"]) {
-        if (state != PSAskingStateConnected && showUntilDate < CFAbsoluteTimeGetCurrent()) {
-            [statusItem.statusBar removeStatusItem:statusItem];
-            statusItem = nil;
+        if (self.state != PSAskingStateConnected && self.showUntilDate < CFAbsoluteTimeGetCurrent()) {
+            [self.statusItem.statusBar removeStatusItem:self.statusItem];
+            self.statusItem = nil;
             return;
         }
         else {
-            if (statusItem == nil) {
+            if (self.statusItem == nil) {
                 [self setupStatusItem];
             }
         }
     }
     NSImage *image = nil;
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryIcon"]) {
-        CGFloat imageWidth = (state == PSAskingStateConnected) ? 22 : 16;
+        CGFloat imageWidth = (self.state == PSAskingStateConnected) ? 22 : 16;
         image = [NSImage imageWithSize:NSMakeSize(imageWidth, 16) flipped:NO drawingHandler:^BOOL(NSRect dstRect) {
             [[NSColor colorWithDeviceWhite:0.0 alpha:0.9] set];
             NSBezierPath *headset = [NSBezierPath bezierPath];
@@ -190,14 +190,14 @@ typedef NS_ENUM(NSInteger, PSState) {
             [headset appendBezierPathWithOvalInRect:NSMakeRect(7.5, 0.5, 2, 6)];
             [headset setLineWidth:2.5];
             [headset stroke];
-            if (state == PSAskingStateConnected) {
+            if (self.state == PSAskingStateConnected) {
                 [[NSColor blackColor] set];
                 NSRect batteryRect = NSMakeRect(11.5, 0.5, 6, 13);
                 [[NSBezierPath bezierPathWithRect:batteryRect] stroke];
                 [[NSBezierPath bezierPathWithRect:NSMakeRect(NSMidX(batteryRect) - 2., NSMaxY(batteryRect), 4., 2.)] fill];
                 batteryRect = NSInsetRect(batteryRect, 1, 1);
 
-                if (batteryCharging) {
+                if (self.batteryCharging) {
                     NSRect lightningRect = NSInsetRect(batteryRect, 1, 1);
                     NSBezierPath *lightning = [NSBezierPath bezierPath];
                     [lightning moveToPoint:NSMakePoint(NSMaxX(lightningRect), NSMaxY(lightningRect))];
@@ -208,7 +208,7 @@ typedef NS_ENUM(NSInteger, PSState) {
                 }
 
 
-                batteryRect.size.height *= ((CGFloat) batteryLevel) / 100.0;
+                batteryRect.size.height *= ((CGFloat) self.batteryLevel) / 100.0;
                 [[NSBezierPath bezierPathWithRect:batteryRect] fill];
             }
             //		NSRectFill(dstRect);
@@ -219,37 +219,37 @@ typedef NS_ENUM(NSInteger, PSState) {
     else {
         image = nil;
     }
-    if ([statusItem respondsToSelector:@selector(button)]) {
-        statusItem.button.image = image;
+    if ([self.statusItem respondsToSelector:@selector(button)]) {
+        self.statusItem.button.image = image;
     }
     else {
-        statusItem.image = image;
+        self.statusItem.image = image;
     }
 
     NSString *title = nil;
 
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryPercentage"]) {
-        if (state == PSAskingStateConnected) {
-            title = batteryCharging ? NSLocalizedString(@"Charging", @"") : [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), batteryLevel];
+        if (self.state == PSAskingStateConnected) {
+            title = self.batteryCharging ? NSLocalizedString(@"Charging", @"") : [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), self.batteryLevel];
         }
         else {
             title = NSLocalizedString(@"-", @"");
         }
-        statusItem.length = NSVariableStatusItemLength;
+        self.statusItem.length = NSVariableStatusItemLength;
     }
     else {
         title = nil;
-        statusItem.length = NSSquareStatusItemLength;
+        self.statusItem.length = NSSquareStatusItemLength;
     }
 
-    if ([statusItem respondsToSelector:@selector(button)]) {
-        statusItem.title = title;
-        statusItem.button.appearsDisabled = state != PSAskingStateConnected;
-        statusItem.button.imagePosition = NSImageRight;
+    if ([self.statusItem respondsToSelector:@selector(button)]) {
+        self.statusItem.title = title;
+        self.statusItem.button.appearsDisabled = self.state != PSAskingStateConnected;
+        self.statusItem.button.imagePosition = NSImageRight;
     }
     else {
-        statusItem.title = title;
-        statusItem.enabled = state == PSAskingStateConnected;
+        self.statusItem.title = title;
+        self.statusItem.enabled = self.state == PSAskingStateConnected;
     }
 }
 
@@ -258,38 +258,38 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         return NULL;
     }
     AppDelegate *myself = (__bridge AppDelegate *) (refcon);
-    [myself menuNeedsUpdate:myself->statusItem.menu event:[NSEvent eventWithCGEvent:event]];
-    [myself->statusItem.menu update];
+    [myself menuNeedsUpdate:myself.statusItem.menu event:[NSEvent eventWithCGEvent:event]];
+    [myself.statusItem.menu update];
     return NULL;
 }
 
 - (void)menuWillOpen:(NSMenu *)menu {
-    eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionListenOnly, CGEventMaskBit(kCGEventFlagsChanged), &modifiersChanged, (__bridge void *) (self));
-    CFRunLoopSourceRef eventSrc = CFMachPortCreateRunLoopSource(NULL, eventTap, 0);
+    self.eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionListenOnly, CGEventMaskBit(kCGEventFlagsChanged), &modifiersChanged, (__bridge void *) (self));
+    CFRunLoopSourceRef eventSrc = CFMachPortCreateRunLoopSource(NULL, self.eventTap, 0);
     if (eventSrc) {
         CFRunLoopAddSource([[NSRunLoop currentRunLoop] getCFRunLoop], eventSrc, kCFRunLoopCommonModes);
         CFRelease(eventSrc);
-        CGEventTapEnable(eventTap, true);
+        CGEventTapEnable(self.eventTap, true);
     }
 }
 
 - (void)menuDidClose:(NSMenu *)menu {
-    CGEventTapEnable(eventTap, false);
-    eventTap = NULL;
+    CGEventTapEnable(self.eventTap, false);
+    self.eventTap = NULL;
 }
 
 - (void)menuNeedsUpdate:(NSMenu *)menu event:(NSEvent *)event {
     [menu removeAllItems];
-    if (state == PSAskingStateConnected) {
-        [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Connected to %@", @""), name] action:NULL keyEquivalent:@""];
-        [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Version %@", @""), version] action:NULL keyEquivalent:@""];
+    if (self.state == PSAskingStateConnected) {
+        [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Connected to %@", @""), self.name] action:NULL keyEquivalent:@""];
+        [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Version %@", @""), self.version] action:NULL keyEquivalent:@""];
         NSMenuItem *batteryMenuItem = nil;
         NSMenu *batteryMenu = [[NSMenu alloc] initWithTitle:@""];
-        if (batteryCharging) {
+        if (self.batteryCharging) {
             batteryMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Battery level: Charging", @"") action:NULL keyEquivalent:@""];
         }
         else {
-            batteryMenuItem = [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Battery level: %i%%", @""), batteryLevel] action:NULL keyEquivalent:@""];
+            batteryMenuItem = [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Battery level: %i%%", @""), self.batteryLevel] action:NULL keyEquivalent:@""];
         }
         batteryMenuItem.submenu = batteryMenu;
 
@@ -301,11 +301,11 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         [[batteryMenu addItemWithTitle:NSLocalizedString(@"Show Battery Percentage Only", @"") action:@selector(showBatteryTextOnly:) keyEquivalent:@""] setState:(!showBatteryIcon && showBatteryPercentage) ? NSOnState : NSOffState];
 
         [menu addItem:[NSMenuItem separatorItem]];
-        [[menu addItemWithTitle:NSLocalizedString(@"Noise cancellation", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:noiseCancel ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:equalizer ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Auto connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:autoConnection ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Lou Reed mode", @"") action:@selector(toggleLouReed:) keyEquivalent:@""] setState:louReedMode ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:concertHall ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Noise cancellation", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:self.noiseCancel ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizer ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Auto connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnection ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Lou Reed mode", @"") action:@selector(toggleLouReed:) keyEquivalent:@""] setState:self.louReedMode ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHall ? NSOnState : NSOffState];
         [[menu addItemWithTitle:NSLocalizedString(@"Touch control support for all Apps", @"") action:@selector(toggleMediaKeys:) keyEquivalent:@""] setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"] ? NSOnState : NSOffState];
     }
     else {
@@ -370,18 +370,18 @@ static NSArray *uuidServicesZik2 = nil;
     for (IOBluetoothSDPServiceRecord *service in services) {
         if ([service matchesUUIDArray:uuidServices]
                 || [service matchesUUIDArray:uuidServicesZik2]) {
-            IOReturn res = [service getRFCOMMChannelID:&channelId];
+            IOReturn res = [service getRFCOMMChannelID:&self.channelId];
             if (res != kIOReturnSuccess) {
                 NSLog(@"Failed to connect to %@", device.nameOrAddress);
             }
             else {
                 NSLog(@"Connected to %@", device.nameOrAddress);
                 IOBluetoothRFCOMMChannel *rfCommChannel;
-                res = [device openRFCOMMChannelSync:&rfCommChannel withChannelID:channelId delegate:self];
-                mRfCommChannel = rfCommChannel;
+                res = [device openRFCOMMChannelSync:&rfCommChannel withChannelID:self.channelId delegate:self];
+                self.mRfCommChannel = rfCommChannel;
                 NSAssert(res == kIOReturnSuccess, @"Failed to open channel");
                 unsigned char buffer[] = {0x00, 0x03, 0x00};
-                state = PSAskingStateInit;
+                self.state = PSAskingStateInit;
                 res = [rfCommChannel writeSync:buffer length:3];
                 NSAssert(res == kIOReturnSuccess, @"Failed to send init");
                 [device registerForDisconnectNotification:self selector:@selector(disconnected:fromDevice:)];
@@ -396,7 +396,7 @@ static NSArray *uuidServicesZik2 = nil;
         if ([service matchesUUIDArray:uuidServices]
                 || [service matchesUUIDArray:uuidServicesZik2]) {
             NSLog(@"Disconnected from %@", device.nameOrAddress);
-            state = PSAskingStateInit;
+            self.state = PSAskingStateInit;
             [self updateStatusItem];
         }
     }
@@ -413,7 +413,7 @@ static NSArray *uuidServicesZik2 = nil;
     [requestData appendBytes:&buffer length:1];
     [requestData appendData:[requestString dataUsingEncoding:NSASCIIStringEncoding]];
 //	IOReturn res = [mRfCommChannel writeSync:(void *)[requestData bytes] length:[requestData length]];
-    IOReturn res = [mRfCommChannel writeAsync:(void *) [requestData bytes] length:(UInt16) [requestData length] refcon:NULL];
+    IOReturn res = [self.mRfCommChannel writeAsync:(void *) [requestData bytes] length:(UInt16) [requestData length] refcon:NULL];
     NSAssert(res == kIOReturnSuccess, @"Failed to send %@", request);
 }
 
@@ -421,22 +421,22 @@ static NSArray *uuidServicesZik2 = nil;
     NSString *path = [[[xmlDocument rootElement] attributeForName:@"path"] stringValue];
 //	NSLog(@"answer for path:%@ : %@",path,xmlDocument);
     if ([path isEqualToString:@"/api/software/version/get"]) {
-        version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"version"] stringValue];
-        if (version == nil)
+        self.version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"version"] stringValue];
+        if (self.version == nil)
             //Zik 2
-            version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"sip6"] stringValue];
+            self.version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"sip6"] stringValue];
     }
     else if ([path isEqualToString:@"/api/bluetooth/friendlyname/get"]) {
-        name = [[[[xmlDocument nodesForXPath:@"//bluetooth" error:NULL] lastObject] attributeForName:@"friendlyname"] stringValue];
+        self.name = [[[[xmlDocument nodesForXPath:@"//bluetooth" error:NULL] lastObject] attributeForName:@"friendlyname"] stringValue];
     }
     else if ([path isEqualToString:@"/api/system/battery/get"]) {
         int newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"level"] stringValue] intValue];
         if (newBatteryLevel == '\0')
             //Zik 2
             newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"percent"] stringValue] intValue];
-        batteryCharging = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"state"] stringValue] isEqualToString:@"charging"];
+        self.batteryCharging = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"state"] stringValue] isEqualToString:@"charging"];
 
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && !batteryCharging) {
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && !self.batteryCharging) {
             NSUserNotification *userNotification = nil;
             NSArray *notificationLevels = [[NSUserDefaults standardUserDefaults] arrayForKey:@"BatteryNotificationLevels"];
             NSMutableArray *sortedNotificationLevels = [NSMutableArray array];
@@ -447,20 +447,20 @@ static NSArray *uuidServicesZik2 = nil;
                 return [obj2 compare:obj1];
             }];
             for (NSString *currentLevel in sortedNotificationLevels) {
-                if (batteryLevel > [currentLevel intValue] && newBatteryLevel <= [currentLevel intValue]) {
+                if (self.batteryLevel > [currentLevel intValue] && newBatteryLevel <= [currentLevel intValue]) {
                     userNotification = [[NSUserNotification alloc] init];
                     userNotification.title = NSLocalizedString(@"Parrot Zik Battery Notification", @"");
                     userNotification.subtitle = [NSString stringWithFormat:NSLocalizedString(@"%i%% of battery remaining", @""), [currentLevel intValue]];
                     break;
                 }
             }
-            if (!userNotification && [[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryAboutToDieNotifications"] && batteryLevel >= 2 && newBatteryLevel < 2) {
+            if (!userNotification && [[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryAboutToDieNotifications"] && self.batteryLevel >= 2 && newBatteryLevel < 2) {
                 userNotification = [[NSUserNotification alloc] init];
                 userNotification.title = NSLocalizedString(@"Parrot Zik Battery Low", @"");
                 userNotification.subtitle = NSLocalizedString(@"Recharge the battery soon", @"");
             }
 
-            if ((batteryLevel == 100 && newBatteryLevel == 0) || (newBatteryLevel > batteryLevel)) {
+            if ((self.batteryLevel == 100 && newBatteryLevel == 0) || (newBatteryLevel > self.batteryLevel)) {
                 userNotification = nil; // Fix wrong notification when disconnecting recharge cable
             }
 
@@ -469,29 +469,29 @@ static NSArray *uuidServicesZik2 = nil;
             }
         }
 
-        batteryLevel = newBatteryLevel;
+        self.batteryLevel = newBatteryLevel;
         [self updateStatusItem];
     }
     else if ([path isEqualToString:@"/api/audio/noise_cancellation/enabled/get"]) {
-        noiseCancel = [[[[[xmlDocument nodesForXPath:@"//noise_cancellation" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.noiseCancel = [[[[[xmlDocument nodesForXPath:@"//noise_cancellation" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:@"/api/audio/equalizer/enabled/get"]) {
-        equalizer = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.equalizer = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:@"/api/system/auto_connection/enabled/get"]) {
-        autoConnection = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.autoConnection = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:@"/api/audio/specific_mode/enabled/get"]) {
-        louReedMode = [[[[[xmlDocument nodesForXPath:@"//specific_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.louReedMode = [[[[[xmlDocument nodesForXPath:@"//specific_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:@"/api/audio/sound_effect/enabled/get"]) {
-        concertHall = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.concertHall = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else {
         NSLog(@"Unknown answer : %@ %@ ", path, xmlDocument);
     }
-    [self menuNeedsUpdate:statusItem.menu];
-    [statusItem.menu update];
+    [self menuNeedsUpdate:self.statusItem.menu];
+    [self.statusItem.menu update];
 }
 
 - (void)rfcommChannelData:(IOBluetoothRFCOMMChannel *)rfcommChannel data:(void *)dataPointer length:(size_t)dataLength {
@@ -520,8 +520,8 @@ static NSArray *uuidServicesZik2 = nil;
             break;
         }
         default:
-            if (state == PSAskingStateInit) {
-                state = PSAskingStateConnected;
+            if (self.state == PSAskingStateInit) {
+                self.state = PSAskingStateConnected;
                 unsigned char buffer[] = {0x00, 0x03, 0x02};
                 BOOL success = [data isEqualToData:[NSData dataWithBytes:buffer length:3]];
                 NSAssert(success, @"Recieved unknown init data");
@@ -604,33 +604,33 @@ static NSArray *uuidServicesZik2 = nil;
 }
 
 - (IBAction)toggleNoiseCancellation:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/noise_cancellation/enabled/set?arg=%@", noiseCancel ? @"false" : @"true"]];
+    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/noise_cancellation/enabled/set?arg=%@", self.noiseCancel ? @"false" : @"true"]];
     [self sendRequest:@"GET /api/audio/noise_cancellation/enabled/get"];
 }
 
 - (IBAction)toggleEqualizer:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/equalizer/enabled/set?arg=%@", equalizer ? @"false" : @"true"]];
+    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/equalizer/enabled/set?arg=%@", self.equalizer ? @"false" : @"true"]];
     [self sendRequest:@"GET /api/audio/equalizer/enabled/get"];
 }
 
 - (IBAction)toggleAutoConnect:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/system/auto_connection/enabled/set?arg=%@", autoConnection ? @"false" : @"true"]];
+    [self sendRequest:[NSString stringWithFormat:@"SET /api/system/auto_connection/enabled/set?arg=%@", self.autoConnection ? @"false" : @"true"]];
     [self sendRequest:@"GET /api/system/auto_connection/enabled/get"];
 }
 
 - (IBAction)toggleLouReed:(id)sender {
-    if (!louReedMode && concertHall) {
+    if (!self.louReedMode && self.concertHall) {
         [self toggleConcertHall:sender];
     }
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/specific_mode/enabled/set?arg=%@", louReedMode ? @"false" : @"true"]];
+    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/specific_mode/enabled/set?arg=%@", self.louReedMode ? @"false" : @"true"]];
     [self sendRequest:@"GET /api/audio/specific_mode/enabled/get"];
 }
 
 - (IBAction)toggleConcertHall:(id)sender {
-    if (louReedMode && !concertHall) {
+    if (self.louReedMode && !self.concertHall) {
         [self toggleLouReed:sender];
     }
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/sound_effect/enabled/set?arg=%@", concertHall ? @"false" : @"true"]];
+    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/sound_effect/enabled/set?arg=%@", self.concertHall ? @"false" : @"true"]];
     [self sendRequest:@"GET /api/audio/sound_effect/enabled/get"];
 }
 
