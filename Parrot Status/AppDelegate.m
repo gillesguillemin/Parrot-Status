@@ -39,7 +39,7 @@ typedef NS_ENUM(NSInteger, PSState) {
     PSState state;
 
     // State
-    unsigned char batteryLevel;
+    int batteryLevel;
     BOOL batteryCharging;
     NSString *version;
     NSString *name;
@@ -73,16 +73,17 @@ typedef NS_ENUM(NSInteger, PSState) {
     if (loginItems) {
         [self enableLoginItemWithLoginItemsReference:loginItems forPath:appPath];
     }
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"])
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"]) {
         [self setupMediaKeyMapping];
+    }
 }
 
 - (void)setupMediaKeyMapping {
     [NSTask launchedTaskWithLaunchPath:@"/bin/launchctl" arguments:@[@"unload", @"/System/Library/LaunchAgents/com.apple.rcd.plist"]];
     self.eventMonitor = [NSEvent addGlobalMonitorForEventsMatchingMask:(NSKeyDownMask | NSSystemDefinedMask) handler:^(NSEvent *event) {
-        int keyCode = (([event data1] & 0xFFFF0000) >> 16);
+        NSInteger keyCode = (([event data1] & 0xFFFF0000) >> 16);
 
-        int keyFlags = ([event data1] & 0x0000FFFF);
+        NSInteger keyFlags = ([event data1] & 0x0000FFFF);
 
         int keyState = (((keyFlags & 0xFF00) >> 8)) == 0xA;
 
@@ -112,7 +113,7 @@ typedef NS_ENUM(NSInteger, PSState) {
                     break;
                 default:
                     // TODO make this popup a message in the UI (with a link to submit the issue and a "don't show this message again" checkbox)
-                    NSLog(@"Unknown bluetooth key received.  Please visit https://github.com/jguice/mac-bt-headset-fix/issues and submit an issue describing what you expect the key to do (include the following data): keyCode:%i keyFlags:%i keyState:%i %li", keyCode, keyFlags, keyState, (long) [event data2]);
+                    NSLog(@"Unknown bluetooth key received.  Please visit https://github.com/jguice/mac-bt-headset-fix/issues and submit an issue describing what you expect the key to do (include the following data): keyCode:%li keyFlags:%li keyState:%i %li", keyCode, keyFlags, keyState, (long) [event data2]);
                     break;
             }
         }
@@ -229,12 +230,7 @@ typedef NS_ENUM(NSInteger, PSState) {
 
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryPercentage"]) {
         if (state == PSAskingStateConnected) {
-            if (batteryCharging) {
-                title = NSLocalizedString(@"Charging", @"");
-            }
-            else {
-                title = [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), batteryLevel];
-            }
+            title = batteryCharging ? NSLocalizedString(@"Charging", @"") : [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), batteryLevel];
         }
         else {
             title = NSLocalizedString(@"-", @"");
@@ -409,7 +405,7 @@ static NSArray *uuidServicesZik2 = nil;
 - (void)sendRequest:(NSString *)request {
     NSString *requestString = request;
     NSMutableData *requestData = [NSMutableData data];
-    unsigned char buffer = 0;
+    NSUInteger buffer = 0;
     [requestData appendBytes:&buffer length:1];
     buffer = [requestString lengthOfBytesUsingEncoding:NSASCIIStringEncoding] + 3;
     [requestData appendBytes:&buffer length:1];
@@ -417,7 +413,7 @@ static NSArray *uuidServicesZik2 = nil;
     [requestData appendBytes:&buffer length:1];
     [requestData appendData:[requestString dataUsingEncoding:NSASCIIStringEncoding]];
 //	IOReturn res = [mRfCommChannel writeSync:(void *)[requestData bytes] length:[requestData length]];
-    IOReturn res = [mRfCommChannel writeAsync:(void *) [requestData bytes] length:[requestData length] refcon:NULL];
+    IOReturn res = [mRfCommChannel writeAsync:(void *) [requestData bytes] length:(UInt16) [requestData length] refcon:NULL];
     NSAssert(res == kIOReturnSuccess, @"Failed to send %@", request);
 }
 
@@ -434,13 +430,13 @@ static NSArray *uuidServicesZik2 = nil;
         name = [[[[xmlDocument nodesForXPath:@"//bluetooth" error:NULL] lastObject] attributeForName:@"friendlyname"] stringValue];
     }
     else if ([path isEqualToString:@"/api/system/battery/get"]) {
-        char newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"level"] stringValue] intValue];
+        int newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"level"] stringValue] intValue];
         if (newBatteryLevel == '\0')
             //Zik 2
             newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"percent"] stringValue] intValue];
         batteryCharging = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"state"] stringValue] isEqualToString:@"charging"];
 
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && batteryCharging == NO) {
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && !batteryCharging) {
             NSUserNotification *userNotification = nil;
             NSArray *notificationLevels = [[NSUserDefaults standardUserDefaults] arrayForKey:@"BatteryNotificationLevels"];
             NSMutableArray *sortedNotificationLevels = [NSMutableArray array];
@@ -465,7 +461,7 @@ static NSArray *uuidServicesZik2 = nil;
             }
 
             if ((batteryLevel == 100 && newBatteryLevel == 0) || (newBatteryLevel > batteryLevel)) {
-                userNotification = nil; // Fix wrong notificaiton when disconnecting recharge cable
+                userNotification = nil; // Fix wrong notification when disconnecting recharge cable
             }
 
             if (userNotification) {
@@ -721,8 +717,9 @@ static NSArray *uuidServicesZik2 = nil;
     // We call LSSharedFileListInsertItemURL to insert the item at the bottom of Login Items list.
     CFURLRef url = (__bridge CFURLRef) [NSURL fileURLWithPath:appPath];
     LSSharedFileListItemRef item = LSSharedFileListInsertItemURL(theLoginItemsRefs, kLSSharedFileListItemLast, NULL, NULL, url, NULL, NULL);
-    if (item)
+    if (item) {
         CFRelease(item);
+    }
 }
 
 - (void)disableLoginItemWithLoginItemsReference:(LSSharedFileListRef)theLoginItemsRefs forPath:(NSString *)appPath {
@@ -739,10 +736,14 @@ static NSArray *uuidServicesZik2 = nil;
             }
             // Docs for LSSharedFileListItemResolve say we're responsible
             // for releasing the CFURLRef that is returned
-            if (thePath != NULL) CFRelease(thePath);
+            if (thePath != NULL) {
+                CFRelease(thePath);
+            }
         }
     }
-    if (loginItemsArray != NULL) CFRelease(loginItemsArray);
+    if (loginItemsArray != NULL) {
+        CFRelease(loginItemsArray);
+    }
 }
 
 - (BOOL)loginItemExistsWithLoginItemReference:(LSSharedFileListRef)theLoginItemsRefs forPath:(NSString *)appPath {
@@ -762,10 +763,14 @@ static NSArray *uuidServicesZik2 = nil;
             }
             // Docs for LSSharedFileListItemResolve say we're responsible
             // for releasing the CFURLRef that is returned
-            if (thePath != NULL) CFRelease(thePath);
+            if (thePath != NULL) {
+                CFRelease(thePath);
+            }
         }
     }
-    if (loginItemsArray != NULL) CFRelease(loginItemsArray);
+    if (loginItemsArray != NULL) {
+        CFRelease(loginItemsArray);
+    }
 
     return found;
 }
