@@ -35,7 +35,7 @@ typedef NS_ENUM(NSInteger, PSState) {
 	BluetoothRFCOMMChannelID channelId;
 	IOBluetoothRFCOMMChannel * mRfCommChannel;
 	PSState state;
-	
+
 	// State
 	unsigned char batteryLevel;
 	BOOL batteryCharging;
@@ -44,10 +44,11 @@ typedef NS_ENUM(NSInteger, PSState) {
 	BOOL autoConnection;
 	BOOL ancPhoneMode;
 	BOOL noiseCancel;
+	BOOL equalizer;
 	BOOL louReedMode;
 	BOOL concertHall;
 	CFAbsoluteTime showUntilDate;
-	
+
 	CFMachPortRef eventTap;
 }
 
@@ -145,8 +146,9 @@ typedef NS_ENUM(NSInteger, PSState) {
 	NSMenu * myMenu = [[NSMenu alloc] initWithTitle:@"Test"];
 	myMenu.delegate = self;
 	statusItem.menu = myMenu;
-	if([statusItem respondsToSelector:@selector(button)])
+	if([statusItem respondsToSelector:@selector(button)]) {
 		statusItem.button.appearsDisabled = YES;
+	}
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
@@ -155,8 +157,9 @@ typedef NS_ENUM(NSInteger, PSState) {
 	if (loginItems) {
 		[self disableLoginItemWithLoginItemsReference:loginItems forPath:appPath];
 	}
-	if([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"])
+	if([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"]) {
 		[self disableMediaKeyMapping];
+	}
 }
 
 - (void) updateStatusItem {
@@ -292,16 +295,17 @@ CGEventRef modifiersChanged( CGEventTapProxy proxy, CGEventType type, CGEventRef
 			batteryMenuItem =[menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Battery level: %i%%", @""),batteryLevel] action:NULL keyEquivalent:@""];
 		}
 		batteryMenuItem.submenu = batteryMenu;
-		
+
 		BOOL showBatteryPercentage = [[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryPercentage"];
 		BOOL showBatteryIcon = [[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryIcon"];
-		
+
 		[[batteryMenu addItemWithTitle:NSLocalizedString(@"Show Battery Icon Only", @"") action:@selector(showBatteryIconOnly:) keyEquivalent:@""] setState:(showBatteryIcon&&!showBatteryPercentage)?NSOnState:NSOffState];
 		[[batteryMenu addItemWithTitle:NSLocalizedString(@"Show Battery Icon And Percentage", @"") action:@selector(showBatteryIconAndText:) keyEquivalent:@""] setState:(showBatteryIcon&&showBatteryPercentage)?NSOnState:NSOffState];
 		[[batteryMenu addItemWithTitle:NSLocalizedString(@"Show Battery Percentage Only", @"") action:@selector(showBatteryTextOnly:) keyEquivalent:@""] setState:(!showBatteryIcon&&showBatteryPercentage)?NSOnState:NSOffState];
-		
+
 		[menu addItem:[NSMenuItem separatorItem]];
 		[[menu addItemWithTitle:NSLocalizedString(@"Noise cancellation", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:noiseCancel?NSOnState:NSOffState];
+		[[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:equalizer?NSOnState:NSOffState];
 		[[menu addItemWithTitle:NSLocalizedString(@"Auto connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:autoConnection?NSOnState:NSOffState];
 		[[menu addItemWithTitle:NSLocalizedString(@"Lou Reed mode", @"") action:@selector(toggleLouReed:) keyEquivalent:@""] setState:louReedMode?NSOnState:NSOffState];
 		[[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:concertHall?NSOnState:NSOffState];
@@ -459,21 +463,24 @@ static NSArray * uuidServicesZik2 = nil;
 				userNotification.title = NSLocalizedString(@"Parrot Zik Battery Low", @"");
 				userNotification.subtitle = NSLocalizedString(@"Recharge the battery soon", @"");
 			}
-			
+
 			if( ( batteryLevel == 100 &&  newBatteryLevel == 0) || ( newBatteryLevel > batteryLevel)) {
 				userNotification = nil; // Fix wrong notificaiton when disconnecting recharge cable
 			}
-			
+
 			if( userNotification ) {
 				[[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:userNotification];
 			}
 		}
-		
+
 		batteryLevel = newBatteryLevel;
 		[self updateStatusItem];
 	}
 	else if([path isEqualToString:@"/api/audio/noise_cancellation/enabled/get"]) {
 		noiseCancel = [[[[[xmlDocument nodesForXPath:@"//noise_cancellation" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+	}
+	else if([path isEqualToString:@"/api/audio/equalizer/enabled/get"]) {
+		equalizer = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
 	}
 	else if([path isEqualToString:@"/api/system/auto_connection/enabled/get"]) {
 		autoConnection = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
@@ -527,6 +534,7 @@ static NSArray * uuidServicesZik2 = nil;
 				[self sendRequest:@"GET /api/bluetooth/friendlyname/get"];
 				[self sendRequest:@"GET /api/system/battery/get"];
 				[self sendRequest:@"GET /api/audio/noise_cancellation/enabled/get"];
+				[self sendRequest:@"GET /api/audio/equalizer/enabled/get"];
 				[self sendRequest:@"GET /api/system/auto_connection/enabled/get"];
 				[self sendRequest:@"GET /api/audio/specific_mode/enabled/get"];
 				[self sendRequest:@"GET /api/audio/sound_effect/enabled/get"];
@@ -602,6 +610,11 @@ static NSArray * uuidServicesZik2 = nil;
 - (IBAction)toggleNoiseCancellation:(id)sender {
 	[self sendRequest:[NSString stringWithFormat:@"SET /api/audio/noise_cancellation/enabled/set?arg=%@",noiseCancel?@"false":@"true"]];
 	[self sendRequest:@"GET /api/audio/noise_cancellation/enabled/get"];
+}
+
+- (IBAction)toggleEqualizer:(id)sender {
+	[self sendRequest:[NSString stringWithFormat:@"SET /api/audio/equalizer/enabled/set?arg=%@",equalizer?@"false":@"true"]];
+	[self sendRequest:@"GET /api/audio/equalizer/enabled/get"];
 }
 
 - (IBAction)toggleAutoConnect:(id)sender {
