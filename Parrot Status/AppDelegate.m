@@ -18,27 +18,103 @@ typedef NS_ENUM(NSInteger, PSState) {
     PSAskingStateConnected,
 };
 
+typedef enum {
+    NOISE_CONTROL_NOISE_CANCELLING_MAX,
+    NOISE_CONTROL_NOISE_CANCELLING,
+    NOISE_CONTROL_OFF,
+    NOISE_CONTROL_STREET_MODE,
+    NOISE_CONTROL_STREET_MODE_MAX,
+} NOISE_CONTROL_STATE;
+
+#define GET(API) [NSString stringWithFormat:@"GET %@", API]
+#define SET(API, value) [NSString stringWithFormat:@"@SET %@?arg=%@", API, value]
+
+
+// API
+static NSString *const ACCOUNT_USERNAME_GET = @"/api/account/username/get";
+static NSString *const ACCOUNT_USERNAME_SET = @"/api/account/username/set";
+static NSString *const APPLI_VERSION_SET = @"/api/appli_version/set";
+static NSString *const AUDIO_NOISE_GET = @"/api/audio/noise/get";
+static NSString *const AUDIO_PARAM_EQ_VALUE_SET = @"/api/audio/param_equalizer/value/set";
+static NSString *const AUDIO_PRESET_ACTIVATE = @"/api/audio/preset/activate";
+static NSString *const AUDIO_PRESET_BYPASS_GET = @"/api/audio/preset/bypass/get";
+static NSString *const AUDIO_PRESET_BYPASS_SET = @"/api/audio/preset/bypass/set";
+static NSString *const AUDIO_PRESET_CLEAR_ALL = @"/api/audio/preset/clear_all";
+static NSString *const AUDIO_PRESET_COUNTER_GET = @"/api/audio/preset/counter/get";
+static NSString *const AUDIO_PRESET_CURRENT_GET = @"/api/audio/preset/current/get";
+static NSString *const AUDIO_PRESET_DOWNLOAD = @"/api/audio/preset/download";
+static NSString *const AUDIO_PRESET_PRODUCER_CANCEL = @"/api/audio/preset/cancel_producer";
+static NSString *const AUDIO_PRESET_REMOVE = @"/api/audio/preset/remove";
+static NSString *const AUDIO_PRESET_SAVE = @"/api/audio/preset/save";
+static NSString *const AUDIO_PRESET_SYNCHRO_START = @"/api/audio/preset/synchro/start";
+static NSString *const AUDIO_PRESET_SYNCHRO_STOP = @"/api/audio/preset/synchro/stop";
+static NSString *const AUDIO_SMART_TUNE_GET = @"/api/audio/smart_audio_tune/get";
+static NSString *const AUDIO_SMART_TUNE_SET = @"/api/audio/smart_audio_tune/set";
+static NSString *const AUDIO_SOURCE_GET = @"/api/audio/source/get";
+static NSString *const AUDIO_TRACK_METADATA_GET = @"/api/audio/track/metadata/get";
+static NSString *const BATTERY_GET = @"/api/system/battery/get";
+static NSString *const CONCERT_HALL_ANGLE_GET = @"/api/audio/sound_effect/angle/get";
+static NSString *const CONCERT_HALL_ANGLE_SET = @"/api/audio/sound_effect/angle/set";
+static NSString *const CONCERT_HALL_ENABLED_GET = @"/api/audio/sound_effect/enabled/get";
+static NSString *const CONCERT_HALL_ENABLED_SET = @"/api/audio/sound_effect/enabled/set";
+static NSString *const CONCERT_HALL_GET = @"/api/audio/sound_effect/get";
+static NSString *const CONCERT_HALL_ROOM_GET = @"/api/audio/sound_effect/room_size/get";
+static NSString *const CONCERT_HALL_ROOM_SET = @"/api/audio/sound_effect/room_size/set";
+static NSString *const EQUALIZER_ENABLED_GET = @"/api/audio/equalizer/enabled/get";
+static NSString *const EQUALIZER_ENABLED_SET = @"/api/audio/equalizer/enabled/set";
+static NSString *const FRIENDLY_NAME_GET = @"/api/bluetooth/friendlyname/get";
+static NSString *const FRIENDLY_NAME_SET = @"/api/bluetooth/friendlyname/set";
+static NSString *const NOISE_CONTROL_ENABLED_GET = @"/api/audio/noise_control/enabled/get";
+static NSString *const NOISE_CONTROL_ENABLED_SET = @"/api/audio/noise_control/enabled/set";
+static NSString *const NOISE_CONTROL_GET = @"/api/audio/noise_control/get";
+static NSString *const NOISE_CONTROL_SET = @"/api/audio/noise_control/set";
+static NSString *const SOFTWARE_DOWNLOAD_SIZE_SET = @"/api/software/download_size/set";
+static NSString *const SOFTWARE_TTS_DISABLE = @"/api/software/tts/disable";
+static NSString *const SOFTWARE_TTS_ENABLE = @"/api/software/tts/enable";
+static NSString *const SOFTWARE_TTS_GET = @"/api/software/tts/get";
+static NSString *const SOFTWARE_VERSION_SIP6_GET = @"/api/software/version/get";
+static NSString *const SYSTEM_ANC_PHONE_MODE_GET = @"/api/system/anc_phone_mode/enabled/get";
+static NSString *const SYSTEM_ANC_PHONE_MODE_SET = @"/api/system/anc_phone_mode/enabled/set";
+static NSString *const SYSTEM_AUTO_CONNECTION_GET = @"/api/system/auto_connection/enabled/get";
+static NSString *const SYSTEM_AUTO_CONNECTION_SET = @"/api/system/auto_connection/enabled/set";
+static NSString *const SYSTEM_AUTO_POWER_OFF_GET = @"/api/system/auto_power_off/get";
+static NSString *const SYSTEM_AUTO_POWER_OFF_LIST_GET = @"/api/system/auto_power_off/presets_list/get";
+static NSString *const SYSTEM_AUTO_POWER_OFF_SET = @"/api/system/auto_power_off/set";
+static NSString *const SYSTEM_BT_ADDRESS_GET = @"/api/system/bt_address/get";
+static NSString *const SYSTEM_COLOR_GET = @"/api/system/color/get";
+static NSString *const SYSTEM_DEVICE_PI = @"/api/system/pi/get";
+static NSString *const SYSTEM_FLIGHT_MODE_DISABLE = @"/api/flight_mode/disable";
+static NSString *const SYSTEM_FLIGHT_MODE_ENABLE = @"/api/flight_mode/enable";
+static NSString *const SYSTEM_FLIGHT_MODE_GET = @"/api/flight_mode/get";
+static NSString *const SYSTEM_HEAD_DETECTION_ENABLED_GET = @"/api/system/head_detection/enabled/get";
+static NSString *const SYSTEM_HEAD_DETECTION_ENABLED_SET = @"/api/system/head_detection/enabled/set";
+static NSString *const SYSTEM__DEVICE_TYPE_GET = @"/api/system/device_type/get";
+static NSString *const THUMB_EQUALIZER_VALUE_GET = @"/api/audio/thumb_equalizer/value/get";
+static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/value/set";
+
+
 @interface AppDelegate ()
+
 @property(weak) IBOutlet NSWindow *advancedBatteryWindow;
 @property(weak) IBOutlet SUUpdater *updater;
 @property id eventMonitor;
 
 @property(nonatomic, strong) NSStatusItem *statusItem;
-@property(nonatomic) BluetoothRFCOMMChannelID channelId;
 @property(nonatomic, strong) IOBluetoothRFCOMMChannel *mRfCommChannel;
 @property(nonatomic) PSState state;
 
 // State
 @property(nonatomic) int batteryLevel;
-@property(nonatomic) BOOL batteryCharging;
+@property(nonatomic) BOOL isBatteryCharging;
 @property(nonatomic, copy) NSString *version;
 @property(nonatomic, copy) NSString *name;
-@property(nonatomic) BOOL autoConnection;
+@property(nonatomic) NOISE_CONTROL_STATE noiseControlState;
+@property(nonatomic) BOOL autoConnectionEnabled;
 @property(nonatomic) BOOL ancPhoneMode;
-@property(nonatomic) BOOL noiseCancel;
-@property(nonatomic) BOOL equalizer;
-@property(nonatomic) BOOL louReedMode;
-@property(nonatomic) BOOL concertHall;
+@property(nonatomic) BOOL noiseControlEnabled;
+@property(nonatomic) BOOL equalizerEnabled;
+@property(nonatomic) BOOL concertHallEnabled;
+@property(nonatomic) BOOL headDetectionEnabled;
 @property(nonatomic) CFAbsoluteTime showUntilDate;
 
 @property(nonatomic) CFMachPortRef eventTap;
@@ -52,7 +128,9 @@ typedef NS_ENUM(NSInteger, PSState) {
 - (BOOL)loginItemExistsWithLoginItemReference:(LSSharedFileListRef)theLoginItemsRefs forPath:(NSString *)appPath;
 @end
 
-@implementation AppDelegate
+@implementation AppDelegate {
+    BluetoothRFCOMMChannelID channelId;
+}
 
 + (void)initialize {
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{
@@ -197,7 +275,7 @@ typedef NS_ENUM(NSInteger, PSState) {
                 [[NSBezierPath bezierPathWithRect:NSMakeRect(NSMidX(batteryRect) - 2., NSMaxY(batteryRect), 4., 2.)] fill];
                 batteryRect = NSInsetRect(batteryRect, 1, 1);
 
-                if (self.batteryCharging) {
+                if (self.isBatteryCharging) {
                     NSRect lightningRect = NSInsetRect(batteryRect, 1, 1);
                     NSBezierPath *lightning = [NSBezierPath bezierPath];
                     [lightning moveToPoint:NSMakePoint(NSMaxX(lightningRect), NSMaxY(lightningRect))];
@@ -230,7 +308,7 @@ typedef NS_ENUM(NSInteger, PSState) {
 
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryPercentage"]) {
         if (self.state == PSAskingStateConnected) {
-            title = self.batteryCharging ? NSLocalizedString(@"Charging", @"") : [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), self.batteryLevel];
+            title = self.isBatteryCharging ? [NSString stringWithFormat:NSLocalizedString(@"Charging (%i%%)", @""), self.batteryLevel] : [NSString stringWithFormat:NSLocalizedString(@"%i%%", @""), self.batteryLevel];
         }
         else {
             title = NSLocalizedString(@"-", @"");
@@ -285,8 +363,8 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Version %@", @""), self.version] action:NULL keyEquivalent:@""];
         NSMenuItem *batteryMenuItem = nil;
         NSMenu *batteryMenu = [[NSMenu alloc] initWithTitle:@""];
-        if (self.batteryCharging) {
-            batteryMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Battery level: Charging", @"") action:NULL keyEquivalent:@""];
+        if (self.isBatteryCharging) {
+            batteryMenuItem = [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Battery level: Charging (%i%%)", @""), self.batteryLevel] action:NULL keyEquivalent:@""];
         }
         else {
             batteryMenuItem = [menu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Battery level: %i%%", @""), self.batteryLevel] action:NULL keyEquivalent:@""];
@@ -301,11 +379,28 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         [[batteryMenu addItemWithTitle:NSLocalizedString(@"Show Battery Percentage Only", @"") action:@selector(showBatteryTextOnly:) keyEquivalent:@""] setState:(!showBatteryIcon && showBatteryPercentage) ? NSOnState : NSOffState];
 
         [menu addItem:[NSMenuItem separatorItem]];
-        [[menu addItemWithTitle:NSLocalizedString(@"Noise cancellation", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:self.noiseCancel ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizer ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Auto connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnection ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Lou Reed mode", @"") action:@selector(toggleLouReed:) keyEquivalent:@""] setState:self.louReedMode ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHall ? NSOnState : NSOffState];
+
+        [[menu addItemWithTitle:NSLocalizedString(@"Noise control", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:self.noiseControlEnabled ? NSOnState : NSOffState];
+        NSMenuItem *noiseControlMenuItem = nil;
+        noiseControlMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Noise control Settings", @"") action:NULL keyEquivalent:@""];
+        NSMenu *noiseControlMenu = [[NSMenu alloc] initWithTitle:@""];
+        noiseControlMenuItem.enabled = self.noiseControlEnabled;
+        noiseControlMenuItem.submenu = noiseControlMenu;
+        [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling (max)", @"") action:@selector(setNoiseCancellingMax:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING_MAX ? NSOnState : NSOffState];
+        [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling", @"") action:@selector(setNoiseCancelling:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING ? NSOnState : NSOffState];
+//        [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Off", @"") action:@selector(setNoiseCancellingOff:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_OFF ? NSOnState : NSOffState];
+        [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Street mode", @"") action:@selector(setStreetMode:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_STREET_MODE ? NSOnState : NSOffState];
+        [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Street mode (max)", @"") action:@selector(setStreetModeMax:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_STREET_MODE_MAX ? NSOnState : NSOffState];
+
+
+        [menu addItem:[NSMenuItem separatorItem]];
+
+        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizerEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Bluetooth auto-connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnectionEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Presence sensor", @"") action:@selector(toggleHeadDetection:) keyEquivalent:@""] setState:self.headDetectionEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHallEnabled ? NSOnState : NSOffState];
+
+        [menu addItem:[NSMenuItem separatorItem]];
         [[menu addItemWithTitle:NSLocalizedString(@"Touch control support for all Apps", @"") action:@selector(toggleMediaKeys:) keyEquivalent:@""] setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"] ? NSOnState : NSOffState];
     }
     else {
@@ -370,14 +465,14 @@ static NSArray *uuidServicesZik2 = nil;
     for (IOBluetoothSDPServiceRecord *service in services) {
         if ([service matchesUUIDArray:uuidServices]
                 || [service matchesUUIDArray:uuidServicesZik2]) {
-            IOReturn res = [service getRFCOMMChannelID:&self.channelId];
+            IOReturn res = [service getRFCOMMChannelID:&channelId];
             if (res != kIOReturnSuccess) {
                 NSLog(@"Failed to connect to %@", device.nameOrAddress);
             }
             else {
                 NSLog(@"Connected to %@", device.nameOrAddress);
                 IOBluetoothRFCOMMChannel *rfCommChannel;
-                res = [device openRFCOMMChannelSync:&rfCommChannel withChannelID:self.channelId delegate:self];
+                res = [device openRFCOMMChannelSync:&rfCommChannel withChannelID:channelId delegate:self];
                 self.mRfCommChannel = rfCommChannel;
                 NSAssert(res == kIOReturnSuccess, @"Failed to open channel");
                 unsigned char buffer[] = {0x00, 0x03, 0x00};
@@ -420,23 +515,23 @@ static NSArray *uuidServicesZik2 = nil;
 - (void)handleAnswer:(NSXMLDocument *)xmlDocument {
     NSString *path = [[[xmlDocument rootElement] attributeForName:@"path"] stringValue];
 //	NSLog(@"answer for path:%@ : %@",path,xmlDocument);
-    if ([path isEqualToString:@"/api/software/version/get"]) {
+    if ([path isEqualToString:SOFTWARE_VERSION_SIP6_GET]) {
         self.version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"version"] stringValue];
         if (self.version == nil)
             //Zik 2
             self.version = [[[[xmlDocument nodesForXPath:@"//software" error:NULL] lastObject] attributeForName:@"sip6"] stringValue];
     }
-    else if ([path isEqualToString:@"/api/bluetooth/friendlyname/get"]) {
+    else if ([path isEqualToString:FRIENDLY_NAME_GET]) {
         self.name = [[[[xmlDocument nodesForXPath:@"//bluetooth" error:NULL] lastObject] attributeForName:@"friendlyname"] stringValue];
     }
-    else if ([path isEqualToString:@"/api/system/battery/get"]) {
+    else if ([path isEqualToString:BATTERY_GET]) {
         int newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"level"] stringValue] intValue];
         if (newBatteryLevel == '\0')
             //Zik 2
             newBatteryLevel = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"percent"] stringValue] intValue];
-        self.batteryCharging = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"state"] stringValue] isEqualToString:@"charging"];
+        self.isBatteryCharging = [[[[[xmlDocument nodesForXPath:@"//battery" error:NULL] lastObject] attributeForName:@"state"] stringValue] isEqualToString:@"charging"];
 
-        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && !self.batteryCharging) {
+        if ([[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] && !self.isBatteryCharging) {
             NSUserNotification *userNotification = nil;
             NSArray *notificationLevels = [[NSUserDefaults standardUserDefaults] arrayForKey:@"BatteryNotificationLevels"];
             NSMutableArray *sortedNotificationLevels = [NSMutableArray array];
@@ -472,21 +567,39 @@ static NSArray *uuidServicesZik2 = nil;
         self.batteryLevel = newBatteryLevel;
         [self updateStatusItem];
     }
-    else if ([path isEqualToString:@"/api/audio/noise_cancellation/enabled/get"]) {
-        self.noiseCancel = [[[[[xmlDocument nodesForXPath:@"//noise_cancellation" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    else if ([path isEqualToString:NOISE_CONTROL_GET]) {
+        NSString *type = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"type"] stringValue];
+        NSString *value = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"value"] stringValue];
+        if ([type isEqualToString:@"anc"] && [value isEqualToString:@"2"]) {
+            self.noiseControlState = NOISE_CONTROL_NOISE_CANCELLING_MAX;
+        } else if ([type isEqualToString:@"anc"] && [value isEqualToString:@"1"]) {
+            self.noiseControlState = NOISE_CONTROL_NOISE_CANCELLING;
+        } else if ([type isEqualToString:@"off"]) {
+            self.noiseControlState = NOISE_CONTROL_OFF;
+        } else if ([type isEqualToString:@"aoc"] && [value isEqualToString:@"1"]) {
+            self.noiseControlState = NOISE_CONTROL_STREET_MODE;
+        } else if ([type isEqualToString:@"aoc"] && [value isEqualToString:@"2"]) {
+            self.noiseControlState = NOISE_CONTROL_STREET_MODE_MAX;
+        } else {
+            NSLog(@"Unknown NC state: type:%@ value:%@", type, value);
+        }
     }
-    else if ([path isEqualToString:@"/api/audio/equalizer/enabled/get"]) {
-        self.equalizer = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    else if ([path isEqualToString:NOISE_CONTROL_ENABLED_GET]) {
+        self.noiseControlEnabled = [[[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
-    else if ([path isEqualToString:@"/api/system/auto_connection/enabled/get"]) {
-        self.autoConnection = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    else if ([path isEqualToString:EQUALIZER_ENABLED_GET]) {
+        self.equalizerEnabled = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
-    else if ([path isEqualToString:@"/api/audio/specific_mode/enabled/get"]) {
-        self.louReedMode = [[[[[xmlDocument nodesForXPath:@"//specific_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    else if ([path isEqualToString:SYSTEM_AUTO_CONNECTION_GET]) {
+        self.autoConnectionEnabled = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
-    else if ([path isEqualToString:@"/api/audio/sound_effect/enabled/get"]) {
-        self.concertHall = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    else if ([path isEqualToString:SYSTEM_HEAD_DETECTION_ENABLED_GET]) {
+        self.headDetectionEnabled = [[[[[xmlDocument nodesForXPath:@"//head_detection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
+    else if ([path isEqualToString:CONCERT_HALL_ENABLED_GET]) {
+        self.concertHallEnabled = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    }
+    else if ([path hasSuffix:@"/set?arg"]) {}
     else {
         NSLog(@"Unknown answer : %@ %@ ", path, xmlDocument);
     }
@@ -524,15 +637,16 @@ static NSArray *uuidServicesZik2 = nil;
                 self.state = PSAskingStateConnected;
                 unsigned char buffer[] = {0x00, 0x03, 0x02};
                 BOOL success = [data isEqualToData:[NSData dataWithBytes:buffer length:3]];
-                NSAssert(success, @"Recieved unknown init data");
-                [self sendRequest:@"GET /api/software/version/get"];
-                [self sendRequest:@"GET /api/bluetooth/friendlyname/get"];
-                [self sendRequest:@"GET /api/system/battery/get"];
-                [self sendRequest:@"GET /api/audio/noise_cancellation/enabled/get"];
-                [self sendRequest:@"GET /api/audio/equalizer/enabled/get"];
-                [self sendRequest:@"GET /api/system/auto_connection/enabled/get"];
-                [self sendRequest:@"GET /api/audio/specific_mode/enabled/get"];
-                [self sendRequest:@"GET /api/audio/sound_effect/enabled/get"];
+                NSAssert(success, @"Received unknown init data");
+                [self sendRequest:GET(SOFTWARE_VERSION_SIP6_GET)];
+                [self sendRequest:GET(FRIENDLY_NAME_GET)];
+                [self sendRequest:GET(BATTERY_GET)];
+                [self sendRequest:GET(NOISE_CONTROL_ENABLED_GET)];
+                [self sendRequest:GET(NOISE_CONTROL_GET)];
+                [self sendRequest:GET(EQUALIZER_ENABLED_GET)];
+                [self sendRequest:GET(SYSTEM_HEAD_DETECTION_ENABLED_GET)];
+                [self sendRequest:GET(SYSTEM_AUTO_CONNECTION_GET)];
+                [self sendRequest:GET(CONCERT_HALL_ENABLED_GET)];
             }
             break;
     }
@@ -603,35 +717,54 @@ static NSArray *uuidServicesZik2 = nil;
     }
 }
 
+- (IBAction)setNoiseCancellingMax:(id)sender {
+    [self sendRequest:SET(NOISE_CONTROL_SET, @"anc&value=2")];
+    [self sendRequest:GET(NOISE_CONTROL_GET)];
+}
+
+- (IBAction)setNoiseCancelling:(id)sender {
+    [self sendRequest:SET(NOISE_CONTROL_SET, @"anc&value=1")];
+    [self sendRequest:GET(NOISE_CONTROL_GET)];
+}
+
+- (IBAction)setNoiseCancellingOff:(id)sender {
+    [self sendRequest:SET(NOISE_CONTROL_SET, @"off&value=0")];
+    [self sendRequest:GET(NOISE_CONTROL_GET)];
+}
+
+- (IBAction)setStreetMode:(id)sender {
+    [self sendRequest:SET(NOISE_CONTROL_SET, @"aoc&value=1")];
+    [self sendRequest:GET(NOISE_CONTROL_GET)];
+}
+
+- (IBAction)setStreetModeMax:(id)sender {
+    [self sendRequest:SET(NOISE_CONTROL_SET, @"aoc&value=2")];
+    [self sendRequest:GET(NOISE_CONTROL_GET)];
+}
+
 - (IBAction)toggleNoiseCancellation:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/noise_cancellation/enabled/set?arg=%@", self.noiseCancel ? @"false" : @"true"]];
-    [self sendRequest:@"GET /api/audio/noise_cancellation/enabled/get"];
+    [self sendRequest:SET(NOISE_CONTROL_ENABLED_SET, self.noiseControlEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(NOISE_CONTROL_ENABLED_GET)];
 }
 
 - (IBAction)toggleEqualizer:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/equalizer/enabled/set?arg=%@", self.equalizer ? @"false" : @"true"]];
-    [self sendRequest:@"GET /api/audio/equalizer/enabled/get"];
+    [self sendRequest:SET(EQUALIZER_ENABLED_SET, self.equalizerEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(EQUALIZER_ENABLED_GET)];
+}
+
+- (IBAction)toggleHeadDetection:(id)sender {
+    [self sendRequest:SET(SYSTEM_HEAD_DETECTION_ENABLED_SET, self.headDetectionEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(SYSTEM_HEAD_DETECTION_ENABLED_GET)];
 }
 
 - (IBAction)toggleAutoConnect:(id)sender {
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/system/auto_connection/enabled/set?arg=%@", self.autoConnection ? @"false" : @"true"]];
-    [self sendRequest:@"GET /api/system/auto_connection/enabled/get"];
-}
-
-- (IBAction)toggleLouReed:(id)sender {
-    if (!self.louReedMode && self.concertHall) {
-        [self toggleConcertHall:sender];
-    }
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/specific_mode/enabled/set?arg=%@", self.louReedMode ? @"false" : @"true"]];
-    [self sendRequest:@"GET /api/audio/specific_mode/enabled/get"];
+    [self sendRequest:SET(SYSTEM_AUTO_CONNECTION_SET, self.autoConnectionEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(SYSTEM_AUTO_CONNECTION_GET)];
 }
 
 - (IBAction)toggleConcertHall:(id)sender {
-    if (self.louReedMode && !self.concertHall) {
-        [self toggleLouReed:sender];
-    }
-    [self sendRequest:[NSString stringWithFormat:@"SET /api/audio/sound_effect/enabled/set?arg=%@", self.concertHall ? @"false" : @"true"]];
-    [self sendRequest:@"GET /api/audio/sound_effect/enabled/get"];
+    [self sendRequest:SET(CONCERT_HALL_ENABLED_SET, self.concertHallEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(CONCERT_HALL_ENABLED_GET)];
 }
 
 - (IBAction)about:(id)sender {
