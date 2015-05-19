@@ -110,6 +110,7 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic) NOISE_CONTROL_STATE noiseControlState;
 @property(nonatomic) BOOL autoConnectionEnabled;
+@property(nonatomic) BOOL flightModeEnabled;
 @property(nonatomic) BOOL ancPhoneMode;
 @property(nonatomic) BOOL noiseControlEnabled;
 @property(nonatomic) BOOL audioSmartTuneEnabled;
@@ -388,7 +389,7 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         NSMenuItem *noiseControlMenuItem = nil;
         noiseControlMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Noise control Settings", @"") action:NULL keyEquivalent:@""];
         NSMenu *noiseControlMenu = [[NSMenu alloc] initWithTitle:@""];
-        noiseControlMenuItem.enabled = self.noiseControlEnabled;
+        noiseControlMenuItem.enabled = self.noiseControlEnabled && !self.flightModeEnabled;
         noiseControlMenuItem.submenu = noiseControlMenu;
         [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling (max)", @"") action:@selector(setNoiseCancellingMax:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING_MAX ? NSOnState : NSOffState];
         [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling", @"") action:@selector(setNoiseCancelling:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING ? NSOnState : NSOffState];
@@ -436,6 +437,10 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
     else {
         [[menu addItemWithTitle:NSLocalizedString(@"Battery notifications", @"") action:@selector(toogleBatteryNotifications:) keyEquivalent:@""] setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"ShowBatteryNotifications"] ? NSOnState : NSOffState];
     }
+
+    [menu addItem:[NSMenuItem separatorItem]];
+
+    [[menu addItemWithTitle:NSLocalizedString(@"Flight mode", @"") action:@selector(toggleFlightMode:) keyEquivalent:@""] setState:self.flightModeEnabled ? NSOnState : NSOffState];
 
     [menu addItem:[NSMenuItem separatorItem]];
     if ([event modifierFlags] & NSAlternateKeyMask) {
@@ -595,10 +600,10 @@ static NSArray *uuidServicesZik2 = nil;
     else if ([path isEqualToString:AUDIO_SMART_TUNE_GET]) {
         self.audioSmartTuneEnabled = [[[[[xmlDocument nodesForXPath:@"//smart_audio_tune" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
-//    else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
-//        NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
-//        NSString *type = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"type"] stringValue];
-//    }
+    else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
+        NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
+        NSString *type = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"type"] stringValue];
+    }
     else if ([path isEqualToString:NOISE_CONTROL_GET]) {
         NSString *type = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"type"] stringValue];
         NSString *value = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"value"] stringValue];
@@ -618,6 +623,9 @@ static NSArray *uuidServicesZik2 = nil;
     }
     else if ([path isEqualToString:NOISE_CONTROL_ENABLED_GET]) {
         self.noiseControlEnabled = [[[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    }
+    else if ([path isEqualToString:SYSTEM_FLIGHT_MODE_GET]) {
+        self.flightModeEnabled = [[[[[xmlDocument nodesForXPath:@"//flight_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:EQUALIZER_ENABLED_GET]) {
         self.equalizerEnabled = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
@@ -679,6 +687,7 @@ static NSArray *uuidServicesZik2 = nil;
                 [self sendRequest:GET(SYSTEM_AUTO_POWER_OFF_LIST_GET)];
                 [self sendRequest:GET(NOISE_CONTROL_ENABLED_GET)];
                 [self sendRequest:GET(NOISE_CONTROL_GET)];
+                [self sendRequest:GET(SYSTEM_FLIGHT_MODE_GET)];
                 [self sendRequest:GET(EQUALIZER_ENABLED_GET)];
                 [self sendRequest:GET(SYSTEM_HEAD_DETECTION_ENABLED_GET)];
                 [self sendRequest:GET(SYSTEM_AUTO_CONNECTION_GET)];
@@ -786,7 +795,7 @@ static NSArray *uuidServicesZik2 = nil;
 - (IBAction)selectPreset:(id)sender {
     NSMenuItem *menuItem = sender;
     NSString *presetIndex = [menuItem.title componentsSeparatedByString:@" "][1];
-    NSString *parameters = [NSString stringWithFormat:@"?id=%@&enable=1",presetIndex];
+    NSString *parameters = [NSString stringWithFormat:@"?id=%@&enable=1", presetIndex];
     [self sendRequest:[NSString stringWithFormat:@"%@%@", AUDIO_PRESET_ACTIVATE, parameters]];
     [self sendRequest:GET(AUDIO_PRESET_CURRENT_GET)];
 }
@@ -794,6 +803,25 @@ static NSArray *uuidServicesZik2 = nil;
 - (IBAction)toggleSmartAudioTuning:(id)sender {
     [self sendRequest:SET(AUDIO_SMART_TUNE_SET, self.audioSmartTuneEnabled ? @"false" : @"true")];
     [self sendRequest:GET(AUDIO_SMART_TUNE_GET)];
+}
+
+- (IBAction)toggleFlightMode:(id)sender {
+    if (self.flightModeEnabled) {
+        [self sendRequest:SYSTEM_FLIGHT_MODE_DISABLE];
+        [self sendRequest:GET(SYSTEM_FLIGHT_MODE_GET)];
+    } else {
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert addButtonWithTitle:@"Continue"];
+        [alert addButtonWithTitle:@"Cancel"];
+        [alert setMessageText:@"Flight mode"];
+        [alert setInformativeText:@"Flight mode allows you to save your battery life so that you can use your Zik 2.0 for the duration of your journey (up to 18 hours of autonomy). Once activated, the Zik 2.0 cancels the Bluetooth connection. Use the supplied jack cable to continue enjoying your music. Flight mode is specially adpated for use in trains and airplanes and the noise cancelling technology is automatically configured in the suitable mode. To exit flight mode, all you need to do is manually connect your Zik 2.0 to your computer via Bluetooth."];
+        [alert setAlertStyle:NSWarningAlertStyle];
+        NSModalResponse modalResponse = [alert runModal];
+        if (modalResponse == NSAlertFirstButtonReturn) {
+            [self sendRequest:SYSTEM_FLIGHT_MODE_ENABLE];
+            [self sendRequest:GET(SYSTEM_FLIGHT_MODE_GET)];
+        }
+    }
 }
 
 - (IBAction)toggleEqualizer:(id)sender {
