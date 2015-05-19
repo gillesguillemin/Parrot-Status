@@ -119,6 +119,8 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
 @property(nonatomic) BOOL headDetectionEnabled;
 @property(nonatomic) NSInteger currentPresetId;
 @property(nonatomic) NSInteger presetCounter;
+@property(nonatomic) NSArray *autoPowerOffPresets;
+@property(nonatomic) NSInteger currentAutoPowerOffPreset;
 
 @property(nonatomic) CFAbsoluteTime showUntilDate;
 
@@ -159,10 +161,11 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"]) {
         [self setupMediaKeyMapping];
     }
-    [NSTimer scheduledTimerWithTimeInterval:60 target:self selector:@selector(pollBatteryLevel:) userInfo:nil repeats:YES];
+    [NSTimer scheduledTimerWithTimeInterval:10 target:self selector:@selector(pollBatteryLevel:) userInfo:nil repeats:YES];
 }
 
 - (void)pollBatteryLevel:(NSTimer *)timer {
+    NSLog(@"%s", sel_getName(_cmd));
     [self sendRequest:GET(BATTERY_GET)];
 }
 
@@ -405,23 +408,31 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
 
         [menu addItem:[NSMenuItem separatorItem]];
 
+        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizerEnabled ? NSOnState : NSOffState];
         NSMenuItem *presetsMenuItem = nil;
         presetsMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Presets", @"") action:NULL keyEquivalent:@""];
         NSMenu *presetsMenu = [[NSMenu alloc] initWithTitle:@""];
-        presetsMenuItem.enabled = self.presetCounter > 0;
+        presetsMenuItem.enabled = self.presetCounter > 0 && self.equalizerEnabled;
         presetsMenuItem.submenu = presetsMenu;
         [[presetsMenu addItemWithTitle:NSLocalizedString(@"Smart Audio Tuning", @"") action:@selector(toggleSmartAudioTuning:) keyEquivalent:@""] setState:self.audioSmartTuneEnabled ? NSOnState : NSOffState];
         [presetsMenu addItem:[NSMenuItem separatorItem]];
         for (int i = 0; i < self.presetCounter; ++i) {
             [[presetsMenu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Preset %i", @""), i + 1] action:@selector(selectPreset:) keyEquivalent:@""] setState:self.currentPresetId == i + 1 ? NSOnState : NSOffState];
         }
+        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHallEnabled ? NSOnState : NSOffState];
 
         [menu addItem:[NSMenuItem separatorItem]];
 
-        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizerEnabled ? NSOnState : NSOffState];
         [[menu addItemWithTitle:NSLocalizedString(@"Bluetooth auto-connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnectionEnabled ? NSOnState : NSOffState];
         [[menu addItemWithTitle:NSLocalizedString(@"Presence sensor", @"") action:@selector(toggleHeadDetection:) keyEquivalent:@""] setState:self.headDetectionEnabled ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHallEnabled ? NSOnState : NSOffState];
+
+        NSMenuItem *autoPowerOffMenuItem = nil;
+        autoPowerOffMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Auto Power Off", @"") action:NULL keyEquivalent:@""];
+        NSMenu *autoPowerOffMenu = [[NSMenu alloc] initWithTitle:@""];
+        autoPowerOffMenuItem.submenu = autoPowerOffMenu;
+        for (NSString *autoPowerOffPreset in self.autoPowerOffPresets) {
+            [[autoPowerOffMenu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"%@", @""), autoPowerOffPreset] action:@selector(selectAutoPowerOffPreset:) keyEquivalent:@""] setState:self.currentAutoPowerOffPreset == [autoPowerOffPreset integerValue] ? NSOnState : NSOffState];
+        }
 
         [menu addItem:[NSMenuItem separatorItem]];
         [[menu addItemWithTitle:NSLocalizedString(@"Touch control support for all Apps", @"") action:@selector(toggleMediaKeys:) keyEquivalent:@""] setState:[[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"] ? NSOnState : NSOffState];
@@ -607,7 +618,12 @@ static NSArray *uuidServicesZik2 = nil;
     }
     else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
         NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
-        NSString *type = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"type"] stringValue];
+        NSMutableArray *presets = [[NSMutableArray alloc] initWithCapacity:[node count]];
+        for (NSXMLElement *preset in node) {
+            NSString *presetValue = [[preset attributeForName:@"preset_value"] stringValue];
+            [presets addObject:presetValue];
+        }
+        self.autoPowerOffPresets = presets;
     }
     else if ([path isEqualToString:NOISE_CONTROL_GET]) {
         NSString *type = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"type"] stringValue];
@@ -631,6 +647,9 @@ static NSArray *uuidServicesZik2 = nil;
     }
     else if ([path isEqualToString:SYSTEM_FLIGHT_MODE_GET]) {
         self.flightModeEnabled = [[[[[xmlDocument nodesForXPath:@"//flight_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+    }
+    else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_GET]) {
+        self.currentAutoPowerOffPreset = [[[[[xmlDocument nodesForXPath:@"//auto_power_off" error:NULL] lastObject] attributeForName:@"value"] stringValue] integerValue];
     }
     else if ([path isEqualToString:EQUALIZER_ENABLED_GET]) {
         self.equalizerEnabled = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
@@ -694,6 +713,7 @@ static NSArray *uuidServicesZik2 = nil;
                 [self sendRequest:GET(NOISE_CONTROL_GET)];
                 [self sendRequest:GET(SYSTEM_FLIGHT_MODE_GET)];
                 [self sendRequest:GET(EQUALIZER_ENABLED_GET)];
+                [self sendRequest:GET(SYSTEM_AUTO_POWER_OFF_GET)];
                 [self sendRequest:GET(SYSTEM_HEAD_DETECTION_ENABLED_GET)];
                 [self sendRequest:GET(SYSTEM_AUTO_CONNECTION_GET)];
                 [self sendRequest:GET(CONCERT_HALL_ENABLED_GET)];
@@ -803,6 +823,13 @@ static NSArray *uuidServicesZik2 = nil;
     NSString *parameters = [NSString stringWithFormat:@"?id=%@&enable=1", presetIndex];
     [self sendRequest:[NSString stringWithFormat:@"%@%@", AUDIO_PRESET_ACTIVATE, parameters]];
     [self sendRequest:GET(AUDIO_PRESET_CURRENT_GET)];
+}
+
+- (IBAction)selectAutoPowerOffPreset:(id)sender {
+    NSMenuItem *menuItem = sender;
+    NSString *presetValue = menuItem.title;
+    [self sendRequest:SET(SYSTEM_AUTO_POWER_OFF_SET, presetValue)];
+    [self sendRequest:GET(SYSTEM_AUTO_POWER_OFF_GET)];
 }
 
 - (IBAction)toggleSmartAudioTuning:(id)sender {
