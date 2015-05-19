@@ -112,6 +112,7 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
 @property(nonatomic) BOOL autoConnectionEnabled;
 @property(nonatomic) BOOL ancPhoneMode;
 @property(nonatomic) BOOL noiseControlEnabled;
+@property(nonatomic) BOOL audioSmartTuneEnabled;
 @property(nonatomic) BOOL equalizerEnabled;
 @property(nonatomic) BOOL concertHallEnabled;
 @property(nonatomic) BOOL headDetectionEnabled;
@@ -403,6 +404,8 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         NSMenu *presetsMenu = [[NSMenu alloc] initWithTitle:@""];
         presetsMenuItem.enabled = self.presetCounter > 0;
         presetsMenuItem.submenu = presetsMenu;
+        [[presetsMenu addItemWithTitle:NSLocalizedString(@"Smart Audio Tuning", @"") action:@selector(toggleSmartAudioTuning:) keyEquivalent:@""] setState:self.audioSmartTuneEnabled ? NSOnState : NSOffState];
+        [presetsMenu addItem:[NSMenuItem separatorItem]];
         for (int i = 0; i < self.presetCounter; ++i) {
             [[presetsMenu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Preset %i", @""), i + 1] action:@selector(selectPreset:) keyEquivalent:@""] setState:self.currentPresetId == i + 1 ? NSOnState : NSOffState];
         }
@@ -582,21 +585,21 @@ static NSArray *uuidServicesZik2 = nil;
         [self updateStatusItem];
     }
     else if ([path isEqualToString:AUDIO_PRESET_CURRENT_GET]) {
-        NSArray *node = [xmlDocument nodesForXPath:@"//preset" error:NULL];
         NSString *presetId = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"id"] stringValue];
         self.currentPresetId = [presetId integerValue];
     }
     else if ([path isEqualToString:AUDIO_PRESET_COUNTER_GET]) {
-        NSArray *node = [xmlDocument nodesForXPath:@"//preset" error:NULL];
         NSString *counter = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"counter"] stringValue];
         self.presetCounter = [counter integerValue];
     }
-    else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
-        NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
-        NSString *type = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"type"] stringValue];
+    else if ([path isEqualToString:AUDIO_SMART_TUNE_GET]) {
+        self.audioSmartTuneEnabled = [[[[[xmlDocument nodesForXPath:@"//smart_audio_tune" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
+//    else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
+//        NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
+//        NSString *type = [[[[xmlDocument nodesForXPath:@"//preset" error:NULL] lastObject] attributeForName:@"type"] stringValue];
+//    }
     else if ([path isEqualToString:NOISE_CONTROL_GET]) {
-        NSArray *node = [xmlDocument nodesForXPath:@"//noise_control" error:NULL];
         NSString *type = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"type"] stringValue];
         NSString *value = [[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"value"] stringValue];
         if ([type isEqualToString:@"anc"] && [value isEqualToString:@"2"]) {
@@ -672,6 +675,7 @@ static NSArray *uuidServicesZik2 = nil;
                 [self sendRequest:GET(BATTERY_GET)];
                 [self sendRequest:GET(AUDIO_PRESET_CURRENT_GET)];
                 [self sendRequest:GET(AUDIO_PRESET_COUNTER_GET)];
+                [self sendRequest:GET(AUDIO_SMART_TUNE_GET)];
                 [self sendRequest:GET(SYSTEM_AUTO_POWER_OFF_LIST_GET)];
                 [self sendRequest:GET(NOISE_CONTROL_ENABLED_GET)];
                 [self sendRequest:GET(NOISE_CONTROL_GET)];
@@ -785,6 +789,11 @@ static NSArray *uuidServicesZik2 = nil;
     NSString *parameters = [NSString stringWithFormat:@"?id=%@&enable=1",presetIndex];
     [self sendRequest:[NSString stringWithFormat:@"%@%@", AUDIO_PRESET_ACTIVATE, parameters]];
     [self sendRequest:GET(AUDIO_PRESET_CURRENT_GET)];
+}
+
+- (IBAction)toggleSmartAudioTuning:(id)sender {
+    [self sendRequest:SET(AUDIO_SMART_TUNE_SET, self.audioSmartTuneEnabled ? @"false" : @"true")];
+    [self sendRequest:GET(AUDIO_SMART_TUNE_GET)];
 }
 
 - (IBAction)toggleEqualizer:(id)sender {
