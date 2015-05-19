@@ -159,6 +159,11 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
     if ([[NSUserDefaults standardUserDefaults] boolForKey:@"MapMediaKeys"]) {
         [self setupMediaKeyMapping];
     }
+    [NSTimer scheduledTimerWithTimeInterval:60 target:self selector:@selector(pollBatteryLevel:) userInfo:nil repeats:YES];
+}
+
+- (void)pollBatteryLevel:(NSTimer *)timer {
+    [self sendRequest:GET(BATTERY_GET)];
 }
 
 - (void)setupMediaKeyMapping {
