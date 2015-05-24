@@ -109,14 +109,14 @@ static NSString *const THUMB_EQUALIZER_VALUE_SET = @"/api/audio/thumb_equalizer/
 @property(nonatomic, copy) NSString *version;
 @property(nonatomic, copy) NSString *name;
 @property(nonatomic) NOISE_CONTROL_STATE noiseControlState;
-@property(nonatomic) BOOL autoConnectionEnabled;
-@property(nonatomic) BOOL flightModeEnabled;
+@property(nonatomic) BOOL autoConnectionDisabled;
+@property(nonatomic) BOOL flightModeDisabled;
 @property(nonatomic) BOOL ancPhoneMode;
-@property(nonatomic) BOOL noiseControlEnabled;
-@property(nonatomic) BOOL audioSmartTuneEnabled;
-@property(nonatomic) BOOL equalizerEnabled;
-@property(nonatomic) BOOL concertHallEnabled;
-@property(nonatomic) BOOL headDetectionEnabled;
+@property(nonatomic) BOOL noiseControlDisabled;
+@property(nonatomic) BOOL audioSmartTuneDisabled;
+@property(nonatomic) BOOL equalizerDisabled;
+@property(nonatomic) BOOL concertHallDisabled;
+@property(nonatomic) BOOL headDetectionDisabled;
 @property(nonatomic) NSInteger currentPresetId;
 @property(nonatomic) NSInteger presetCounter;
 @property(nonatomic) NSArray *autoPowerOffPresets;
@@ -393,11 +393,11 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
 
         [menu addItem:[NSMenuItem separatorItem]];
 
-        [[menu addItemWithTitle:NSLocalizedString(@"Noise control", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:self.noiseControlEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Noise control", @"") action:@selector(toggleNoiseCancellation:) keyEquivalent:@""] setState:self.noiseControlDisabled ? NSOnState : NSOffState];
         NSMenuItem *noiseControlMenuItem = nil;
         noiseControlMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Noise control Settings", @"") action:NULL keyEquivalent:@""];
         NSMenu *noiseControlMenu = [[NSMenu alloc] initWithTitle:@""];
-        noiseControlMenuItem.enabled = self.noiseControlEnabled && !self.flightModeEnabled;
+        noiseControlMenuItem.enabled = self.noiseControlDisabled && !self.flightModeDisabled;
         noiseControlMenuItem.submenu = noiseControlMenu;
         [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling (max)", @"") action:@selector(setNoiseCancellingMax:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING_MAX ? NSOnState : NSOffState];
         [[noiseControlMenu addItemWithTitle:NSLocalizedString(@"Noise Cancelling", @"") action:@selector(setNoiseCancelling:) keyEquivalent:@""] setState:self.noiseControlState == NOISE_CONTROL_NOISE_CANCELLING ? NSOnState : NSOffState];
@@ -408,23 +408,23 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
 
         [menu addItem:[NSMenuItem separatorItem]];
 
-        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizerEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Equalizer", @"") action:@selector(toggleEqualizer:) keyEquivalent:@""] setState:self.equalizerDisabled ? NSOnState : NSOffState];
         NSMenuItem *presetsMenuItem = nil;
         presetsMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Presets", @"") action:NULL keyEquivalent:@""];
         NSMenu *presetsMenu = [[NSMenu alloc] initWithTitle:@""];
-        presetsMenuItem.enabled = self.presetCounter > 0 && self.equalizerEnabled;
+        presetsMenuItem.enabled = self.presetCounter > 0 && self.equalizerDisabled;
         presetsMenuItem.submenu = presetsMenu;
-        [[presetsMenu addItemWithTitle:NSLocalizedString(@"Smart Audio Tuning", @"") action:@selector(toggleSmartAudioTuning:) keyEquivalent:@""] setState:self.audioSmartTuneEnabled ? NSOnState : NSOffState];
+        [[presetsMenu addItemWithTitle:NSLocalizedString(@"Smart Audio Tuning", @"") action:@selector(toggleSmartAudioTuning:) keyEquivalent:@""] setState:self.audioSmartTuneDisabled ? NSOnState : NSOffState];
         [presetsMenu addItem:[NSMenuItem separatorItem]];
         for (int i = 0; i < self.presetCounter; ++i) {
             [[presetsMenu addItemWithTitle:[NSString stringWithFormat:NSLocalizedString(@"Preset %i", @""), i + 1] action:@selector(selectPreset:) keyEquivalent:@""] setState:self.currentPresetId == i + 1 ? NSOnState : NSOffState];
         }
-        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHallEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Concert hall mode", @"") action:@selector(toggleConcertHall:) keyEquivalent:@""] setState:self.concertHallDisabled ? NSOnState : NSOffState];
 
         [menu addItem:[NSMenuItem separatorItem]];
 
-        [[menu addItemWithTitle:NSLocalizedString(@"Bluetooth auto-connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnectionEnabled ? NSOnState : NSOffState];
-        [[menu addItemWithTitle:NSLocalizedString(@"Presence sensor", @"") action:@selector(toggleHeadDetection:) keyEquivalent:@""] setState:self.headDetectionEnabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Bluetooth auto-connection", @"") action:@selector(toggleAutoConnect:) keyEquivalent:@""] setState:self.autoConnectionDisabled ? NSOnState : NSOffState];
+        [[menu addItemWithTitle:NSLocalizedString(@"Presence sensor", @"") action:@selector(toggleHeadDetection:) keyEquivalent:@""] setState:self.headDetectionDisabled ? NSOnState : NSOffState];
 
         NSMenuItem *autoPowerOffMenuItem = nil;
         autoPowerOffMenuItem = [menu addItemWithTitle:NSLocalizedString(@"Auto Power Off", @"") action:NULL keyEquivalent:@""];
@@ -456,7 +456,7 @@ CGEventRef modifiersChanged(CGEventTapProxy proxy, CGEventType type, CGEventRef 
 
     [menu addItem:[NSMenuItem separatorItem]];
 
-    [[menu addItemWithTitle:NSLocalizedString(@"Flight mode", @"") action:@selector(toggleFlightMode:) keyEquivalent:@""] setState:self.flightModeEnabled ? NSOnState : NSOffState];
+    [[menu addItemWithTitle:NSLocalizedString(@"Flight mode", @"") action:@selector(toggleFlightMode:) keyEquivalent:@""] setState:self.flightModeDisabled ? NSOnState : NSOffState];
 
     [menu addItem:[NSMenuItem separatorItem]];
     if ([event modifierFlags] & NSAlternateKeyMask) {
@@ -521,6 +521,11 @@ static NSArray *uuidServicesZik2 = nil;
             }
         }
     }
+
+    // There's a bug on OSX with the presence sensor (head detection): even if the music is correctly interrupted when removing the headphones,
+    // it starts up again pretty soon after stopping so the following is to deactivate presence sensor whenever Parrot Status starts up.
+    self.headDetectionDisabled = YES;
+    [self toggleHeadDetection:nil];
 }
 
 - (void)disconnected:(IOBluetoothUserNotification *)note fromDevice:(IOBluetoothDevice *)device {
@@ -614,7 +619,7 @@ static NSArray *uuidServicesZik2 = nil;
         self.presetCounter = [counter integerValue];
     }
     else if ([path isEqualToString:AUDIO_SMART_TUNE_GET]) {
-        self.audioSmartTuneEnabled = [[[[[xmlDocument nodesForXPath:@"//smart_audio_tune" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.audioSmartTuneDisabled = [[[[[xmlDocument nodesForXPath:@"//smart_audio_tune" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_LIST_GET]) {
         NSArray *node = [xmlDocument nodesForXPath:@"//auto_power_off" error:NULL];
@@ -643,25 +648,25 @@ static NSArray *uuidServicesZik2 = nil;
         }
     }
     else if ([path isEqualToString:NOISE_CONTROL_ENABLED_GET]) {
-        self.noiseControlEnabled = [[[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.noiseControlDisabled = [[[[[xmlDocument nodesForXPath:@"//noise_control" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:SYSTEM_FLIGHT_MODE_GET]) {
-        self.flightModeEnabled = [[[[[xmlDocument nodesForXPath:@"//flight_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.flightModeDisabled = [[[[[xmlDocument nodesForXPath:@"//flight_mode" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:SYSTEM_AUTO_POWER_OFF_GET]) {
         self.currentAutoPowerOffPreset = [[[[[xmlDocument nodesForXPath:@"//auto_power_off" error:NULL] lastObject] attributeForName:@"value"] stringValue] integerValue];
     }
     else if ([path isEqualToString:EQUALIZER_ENABLED_GET]) {
-        self.equalizerEnabled = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.equalizerDisabled = [[[[[xmlDocument nodesForXPath:@"//equalizer" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:SYSTEM_AUTO_CONNECTION_GET]) {
-        self.autoConnectionEnabled = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.autoConnectionDisabled = [[[[[xmlDocument nodesForXPath:@"//auto_connection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:SYSTEM_HEAD_DETECTION_ENABLED_GET]) {
-        self.headDetectionEnabled = [[[[[xmlDocument nodesForXPath:@"//head_detection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.headDetectionDisabled = [[[[[xmlDocument nodesForXPath:@"//head_detection" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path isEqualToString:CONCERT_HALL_ENABLED_GET]) {
-        self.concertHallEnabled = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
+        self.concertHallDisabled = [[[[[xmlDocument nodesForXPath:@"//sound_effect" error:NULL] lastObject] attributeForName:@"enabled"] stringValue] isEqualToString:@"true"];
     }
     else if ([path hasSuffix:@"/set?arg"]) {}
     else {
@@ -788,7 +793,7 @@ static NSArray *uuidServicesZik2 = nil;
 }
 
 - (IBAction)toggleNoiseCancellation:(id)sender {
-    [self sendRequest:SET(NOISE_CONTROL_ENABLED_SET, self.noiseControlEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(NOISE_CONTROL_ENABLED_SET, self.noiseControlDisabled ? @"false" : @"true")];
     [self sendRequest:GET(NOISE_CONTROL_ENABLED_GET)];
 }
 
@@ -833,12 +838,12 @@ static NSArray *uuidServicesZik2 = nil;
 }
 
 - (IBAction)toggleSmartAudioTuning:(id)sender {
-    [self sendRequest:SET(AUDIO_SMART_TUNE_SET, self.audioSmartTuneEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(AUDIO_SMART_TUNE_SET, self.audioSmartTuneDisabled ? @"false" : @"true")];
     [self sendRequest:GET(AUDIO_SMART_TUNE_GET)];
 }
 
 - (IBAction)toggleFlightMode:(id)sender {
-    if (self.flightModeEnabled) {
+    if (self.flightModeDisabled) {
         [self sendRequest:SYSTEM_FLIGHT_MODE_DISABLE];
         [self sendRequest:GET(SYSTEM_FLIGHT_MODE_GET)];
     } else {
@@ -857,22 +862,22 @@ static NSArray *uuidServicesZik2 = nil;
 }
 
 - (IBAction)toggleEqualizer:(id)sender {
-    [self sendRequest:SET(EQUALIZER_ENABLED_SET, self.equalizerEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(EQUALIZER_ENABLED_SET, self.equalizerDisabled ? @"false" : @"true")];
     [self sendRequest:GET(EQUALIZER_ENABLED_GET)];
 }
 
 - (IBAction)toggleHeadDetection:(id)sender {
-    [self sendRequest:SET(SYSTEM_HEAD_DETECTION_ENABLED_SET, self.headDetectionEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(SYSTEM_HEAD_DETECTION_ENABLED_SET, self.headDetectionDisabled ? @"false" : @"true")];
     [self sendRequest:GET(SYSTEM_HEAD_DETECTION_ENABLED_GET)];
 }
 
 - (IBAction)toggleAutoConnect:(id)sender {
-    [self sendRequest:SET(SYSTEM_AUTO_CONNECTION_SET, self.autoConnectionEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(SYSTEM_AUTO_CONNECTION_SET, self.autoConnectionDisabled ? @"false" : @"true")];
     [self sendRequest:GET(SYSTEM_AUTO_CONNECTION_GET)];
 }
 
 - (IBAction)toggleConcertHall:(id)sender {
-    [self sendRequest:SET(CONCERT_HALL_ENABLED_SET, self.concertHallEnabled ? @"false" : @"true")];
+    [self sendRequest:SET(CONCERT_HALL_ENABLED_SET, self.concertHallDisabled ? @"false" : @"true")];
     [self sendRequest:GET(CONCERT_HALL_ENABLED_GET)];
 }
 
