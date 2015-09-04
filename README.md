@@ -10,7 +10,7 @@ http://www.parrot.com/zik
 Download
 ========
 
-There is no compiled version at the moment. You will have to compile it yourself I'm afraid, although I might provide one when I am happy enough with it (which might take some time).
+There is no compiled version at the moment (available releases are the ones forked from the original project and are for the Parrot Zik 1st gen only). You will have to compile it yourself I'm afraid, although I might provide one when I am happy enough with it (which might take some time).
 
 Installation
 ============
